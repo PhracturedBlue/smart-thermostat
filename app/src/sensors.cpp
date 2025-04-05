@@ -30,6 +30,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
+#include "rotary_encoder.h"
 
 static const char *TAG = "SENSORS";
 
@@ -54,6 +55,14 @@ adc_unit_t adcUnit;
 adc_channel_t adcChannel;
 adc_oneshot_unit_handle_t adcHandle;
 
+rotary_encoder_info_t info;
+#define ROT_ENC_A_GPIO ((gpio_num_t)43)
+#define ROT_ENC_B_GPIO ((gpio_num_t)44)
+
+#define ENABLE_HALF_STEPS false  // Set to true to enable tracking of rotary encoder at half step resolution
+#define RESET_AT          0      // Set to a positive non-zero number to reset the position if this value is exceeded
+#define FLIP_DIRECTION    false  // Set to true to reverse the clockwise/counterclockwise sense
+
 void updateHvacMode(HVAC_MODE mode)
 {
   OperatingParameters.hvacSetMode = mode;
@@ -67,6 +76,7 @@ void updateHvacSetTemp(float setTemp)
 {
   OperatingParameters.tempSet = setTemp;
   eepromUpdateHvacSetTemp();
+
   ESP_LOGI(TAG, "Set temp: %.1f", setTemp);
 #ifdef MQTT_ENABLED
   MqttUpdateStatusTopic();
@@ -103,6 +113,20 @@ int readLightSensor(void)
   ESP_LOGV(TAG, "Light Sensor: %d mV", (int)voltage);
 
   return (int)voltage;
+}
+
+void readRotaryEncoder(void)
+{
+  rotary_encoder_state_t state;
+  rotary_encoder_get_state(&info, &state);
+  rotary_encoder_reset(&info);
+  if (state.position)
+  {
+    OperatingParameters.tempSet += state.position;
+    updateHvacSetTemp(roundValue(OperatingParameters.tempSet, 0));
+    ESP_LOGI(TAG, "Poll: position %d, direction %s", state.position,
+      state.direction ? (state.direction == ROTARY_ENCODER_DIRECTION_CLOCKWISE ? "CW" : "CCW") : "NOT_SET");
+    }
 }
 
 /*---------------------------------------------------------------
@@ -615,4 +639,8 @@ void sensorsInit()
   startAht();
   ld2410_init();
   initLightSensor();
+
+  memset(&info, 0, sizeof(info));
+  rotary_encoder_init(&info, ROT_ENC_A_GPIO, ROT_ENC_B_GPIO);
+  rotary_encoder_enable_half_steps(&info, true);
 }

@@ -21,10 +21,12 @@
 #include "thermostat.hpp"
 #include "driver/gpio.h"
 
+
 OPERATING_PARAMETERS OperatingParameters;
 extern int64_t lastTimeUpdate;
 int64_t lastWifiReconnect;
 static bool MqttConnectCalled = false;
+extern void readRotaryEncoder(void);
 
 struct gpio_pin_desc {
   short pin;
@@ -222,6 +224,8 @@ void stateMachine(void *parameter)
 
     // Update state of motion sensor
     ld2410_loop();
+
+    readRotaryEncoder();
 
     // Update HVAC State machine
     hvacStateUpdate();

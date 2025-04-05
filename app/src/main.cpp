@@ -25,6 +25,7 @@
 #include "thermostat.hpp"
 #include "esp_timer.h"
 #include "version.h"
+#include "driver/uart.h"
 #define TAG "Main"
 
 // Build version strings for other modules to use
@@ -36,8 +37,9 @@ int64_t millis() { return esp_timer_get_time() / 1000;}
 
 void app_main()
 {
+  uart_set_pin(UART_NUM_0, 45, 46, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
   // Set default log level for all components
-  esp_log_level_set("*", ESP_LOG_WARN);
+  esp_log_level_set("*", ESP_LOG_INFO);
 
   ESP_LOGI (TAG, "IDF version: %s", esp_get_idf_version());
   ESP_LOGD (TAG, "- Free memory: %d bytes", esp_get_free_heap_size());
